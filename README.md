@@ -247,17 +247,66 @@ derived/materialised tables. `alembic downgrade base` drops everything.
 
 ---
 
-## Dashboard (`web/`)
+## Using the dashboard
 
-| Screen | What it shows |
-|---|---|
-| **Watch List** (`/attention`) | Calls needing a manager’s attention on a chosen day, ranked; each with score, summary, and reason tags. Trending‑issues rail alongside. |
-| **Agents** (`/agents`) | Sortable table of volume, handle time, resolved %, average attention. |
-| **Customers** (`/customers`) | Searchable directory → **Customer file** (`/customers/{id}`): full call history. |
-| **Call file** (`/calls/{sid}`) | Playable recording via a custom waveform; a *conversation field* placing flagged moments on the call’s timeline; a *conversation‑energy* mood curve; the editorial transcript; and an *intelligence rail* — intent, summary, outcome, signals, and the score breakdown, every line linking back to its timestamp. |
+Open `http://localhost:5173`. Four areas, reachable from the top bar.
 
-The waveform is decoded in the browser, so the whole instrument (field, waveform,
-energy graph, transcript) shares one time axis and one playhead.
+### Watch List — “which calls need a manager today”
+
+![Watch List](docs/img/watch-list.png)
+
+The landing screen. Calls are ranked by attention score for a chosen day.
+
+- **Pick the day** with the `WINDOW` selector (top right) — it defaults to the
+  most recent day in the data; choose *all time* to rank across everything.
+- The strip under each call is the **score on a 0–100 scale**; the tags next to
+  it (`LEFT UNRESOLVED`, `REPEATED QUESTION`, …) are the reasons that produced it.
+- The five figures across the top are the day at a glance — calls in view,
+  unresolved count, how many are flagged, median score, dataset coverage.
+- **Trending Issues** (right) ranks what customers are calling about, with the
+  change versus the previous window (`▲12`).
+- **Click any call** to open its Call file.
+
+### Call file — one call, end to end
+
+![Call file](docs/img/call-file.png)
+
+Everything about a single call on one screen, all tied to the audio timeline.
+
+- **Header** — customer, agent, topic, date/time, duration, line quality (MOS),
+  and the resolution verdict (`✓ RESOLVED` / `✕ UNRESOLVED` / `→ FOLLOW-UP`).
+- **Conversation Field** — the call laid out left‑to‑right between the agent and
+  the customer, with the flagged moments (intent, mood points, the mood shift,
+  the reasons behind the score, the outcome) placed where they happened. Click a
+  point to jump the audio there.
+- **Player + waveform** — press play, or click anywhere on the waveform to seek.
+  A single playhead moves across the field, the waveform and the energy graph
+  together.
+- **Conversation Energy** — the customer’s mood over the call. Hover a dot to see
+  the line that set it; the dashed marker is the point their mood shifted.
+- **Transcript** — agent on the left, customer on the right, timestamps in the
+  margin. Click a timestamp (or a line) to jump the audio to it. The line playing
+  now is highlighted and scrolls into view; lines used as evidence carry a
+  coloured dot.
+- **Intelligence** (right) — intent, the ≤40‑word summary, the outcome, quick
+  signals (sentiment / risk / effort), and the full score breakdown. **Every line
+  here is clickable** and jumps the audio to the exact moment it’s based on.
+
+### Customers — history per person
+
+`Customers` is a searchable list of everyone who called, with their call count
+and highest attention score. Open one for their **call file history** — every
+call in date order with its outcome, score and summary; click through to any Call
+file.
+
+### Agents — team performance
+
+A sortable table: calls handled, average handle time, resolved %, and average
+attention score per agent. Click a column heading to sort by it.
+
+> The waveform is decoded in the browser, so the field, waveform, energy graph
+> and transcript all share one time axis and one playhead. Best viewed in a
+> current Chrome / Edge / Firefox.
 
 ---
 
