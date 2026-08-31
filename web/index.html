@@ -1,14 +1,71 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Call-Centre Radar</title>
+    <title>Call-Centre Radar — Call Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap"
+      rel="stylesheet"
+    />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              paper: "#F4F1E9",
+              "paper-2": "#FAF8F2",
+              "paper-3": "#FFFFFF",
+              ink: "#26251F",
+              "ink-2": "#615F56",
+              "ink-3": "#9C988B",
+              hair: "#E2DCCC",
+              "hair-2": "#D0C9B4",
+              amber: "#A96B12",
+              green: "#3D7A4E",
+              red: "#AC443B",
+              cyan: "#2C6F81",
+            },
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+              serif: ['Newsreader', 'Georgia', 'serif'],
+            },
+          },
+        },
+      };
+    </script>
     <style>
-      body { background:#0b0f19; color:#e5e7eb; }
-      ::-webkit-scrollbar{width:8px;height:8px}
-      ::-webkit-scrollbar-thumb{background:#374151;border-radius:4px}
+      :root { color-scheme: light; }
+      html, body { background: #F4F1E9; color: #26251F; }
+      body {
+        font-family: Inter, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        /* faint drafting grid */
+        background-image:
+          linear-gradient(rgba(38,37,31,0.028) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(38,37,31,0.028) 1px, transparent 1px);
+        background-size: 46px 46px;
+        background-position: -1px -1px;
+      }
+      ::selection { background: rgba(44,111,129,0.18); }
+      ::-webkit-scrollbar { width: 9px; height: 9px; }
+      ::-webkit-scrollbar-thumb { background: #D0C9B4; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      .tnum { font-variant-numeric: tabular-nums; }
+      .u-label {
+        font-family: "IBM Plex Mono", monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-size: 10px;
+        color: #9C988B;
+      }
+      .hairline { border-color: #E2DCCC; }
+      @keyframes pulse-dot { 0%,100% { opacity: 1 } 50% { opacity: 0.25 } }
+      .live-dot { animation: pulse-dot 2.4s ease-in-out infinite; }
     </style>
   </head>
   <body>

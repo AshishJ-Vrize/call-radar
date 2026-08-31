@@ -54,6 +54,11 @@ cp .env.example .env        # DATABASE_URL, AZURE_OPENAI_*, GPT_DEPLOYMENT
 .venv/Scripts/python -m app.analyze.run --limit 250 --workers 6
 #   ( or: LIMIT=250 bash scripts/seed.sh )
 
+# 4b. (optional) the corpus was recorded in 2020 — shift call dates so the
+#     newest call is "today", making the Watch List demo meaningful.
+#     Touches only calls.started_at/ended_at; --reset restores the originals.
+.venv/Scripts/python -m scripts.shift_dates
+
 # 5. API  (http://localhost:8077/docs)
 .venv/Scripts/python -m uvicorn app.api.main:app --port 8077
 

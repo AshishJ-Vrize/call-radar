@@ -9,5 +9,6 @@ LIMIT="${LIMIT:-250}"
 "$PY" -m alembic upgrade head
 "$PY" -m app.ingest.run  --limit "$LIMIT" --workers 4
 "$PY" -m app.analyze.run --limit "$LIMIT" --workers 6
+"$PY" -m scripts.shift_dates   # 2020 corpus -> newest call = today (optional; --reset to undo)
 echo "Seed complete. Start API:  $PY -m uvicorn app.api.main:app --port 8077"
 echo "Start UI:  cd web && npm run dev"

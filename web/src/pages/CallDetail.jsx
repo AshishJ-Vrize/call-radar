@@ -1,120 +1,136 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, fmtDur, fmtDate } from "../api.js";
-import { ScoreDial, ResBadge, MoodTimeline, Evidence } from "../components.jsx";
+import { api, clock, stamp, factorLabel, MOOD_INK, RESOLUTION } from "../api.js";
+import { useAudio, useWaveform } from "../audio.js";
+import { Label, StatusTick, Loading } from "../components/ui.jsx";
+import ConversationField from "../components/ConversationField.jsx";
+import Waveform from "../components/Waveform.jsx";
+import EnergyGraph from "../components/EnergyGraph.jsx";
+import Transcript from "../components/Transcript.jsx";
+import IntelRail from "../components/IntelRail.jsx";
 
 export default function CallDetail() {
   const { sid } = useParams();
   const [c, setC] = useState(null);
-  const audio = useRef(null);
-  const [now, setNow] = useState(0);
-  const turnRefs = useRef({});
+  const [hovered, setHovered] = useState(null);
+  const { time, duration: adur, playing, seek, toggle } = useAudio(api.audioUrl(sid));
+  const peaks = useWaveform(api.audioUrl(sid));
 
   useEffect(() => { setC(null); api.call(sid).then(setC); }, [sid]);
 
-  const seek = (t) => {
-    if (t == null || !audio.current) return;
-    audio.current.currentTime = t;
-    audio.current.play();
-  };
+  const duration = adur || c?.duration_s || 1;
+  const a = c?.analysis;
 
-  if (!c) return <p className="text-slate-500">Loading…</p>;
-  const a = c.analysis;
-  const evTurns = new Set();
-  if (a) {
-    [a.intent_evidence, a.resolution_evidence, ...(a.mood_timeline || []),
-     ...((a.score_breakdown?.breakdown || []).map((b) => b.evidence))]
-      .forEach((e) => e?.turn_idx != null && evTurns.add(e.turn_idx));
-  }
+  const events = useMemo(() => (a ? buildEvents(a) : []), [a]);
+  const evidence = useMemo(() => (a ? buildEvidenceMap(a) : new Map()), [a]);
+
+  if (!c) return <Loading />;
 
   return (
     <div>
-      <Link to={`/customers/${c.customer.id}`} className="text-sm text-indigo-400">← {c.customer.name}</Link>
-      <div className="flex items-start gap-4 mt-1 mb-4">
-        <div className="flex-1">
-          <h1 className="text-xl font-bold">{c.customer.name} · <span className="text-slate-400 font-normal">{c.agent}</span></h1>
-          <p className="text-sm text-slate-500">
-            {fmtDate(c.started_at)} · {fmtDur(c.duration_s)} · MOS caller {c.caller_mos ?? "–"} / agent {c.agent_mos ?? "–"}
-            {a && <> · <span className="text-slate-400">{a.trending_issue_label}</span></>}
-          </p>
+      {/* contextual header */}
+      <Link to={`/customers/${c.customer.id}`} className="u-label hover:text-cyan">← Calls</Link>
+      <div className="mt-3 flex flex-wrap items-end gap-x-8 gap-y-2 border-b border-hair-2 pb-5">
+        <h1 className="font-serif text-[34px] leading-none text-ink">{c.customer.name}</h1>
+        <div className="u-label pb-1">
+          {c.agent} · {a?.trending_issue_label || c.session}
         </div>
-        {a && <div className="flex flex-col items-center"><ScoreDial n={a.needs_attention_score} /><span className="text-[11px] text-slate-500 mt-1">attention</span></div>}
+        <div className="ml-auto flex items-center gap-6 pb-1">
+          <span className="font-mono text-[11px] tnum text-ink-3">
+            {stamp(c.started_at)} · {clock(c.duration_s)} · MOS {c.caller_mos ?? "–"}
+          </span>
+          {a && <StatusTick resolution={a.resolution} />}
+        </div>
       </div>
 
-      <audio ref={audio} controls src={api.audioUrl(sid)} className="w-full mb-5"
-        onTimeUpdate={(e) => setNow(e.target.currentTime)} />
-
-      {a ? (
-        <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2 space-y-5">
-            <section>
-              <h2 className="font-semibold mb-2">Mood timeline</h2>
-              <MoodTimeline points={a.mood_timeline} dur={c.duration_s} shift={a.mood_shift} onSeek={seek} />
-            </section>
-            <section>
-              <h2 className="font-semibold mb-2">Transcript</h2>
-              <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-2">
-                {c.transcript.map((t) => {
-                  const active = now >= t.start_s && now < t.end_s;
-                  const isEv = evTurns.has(t.idx);
-                  return (
-                    <div key={t.idx} ref={(el) => (turnRefs.current[t.idx] = el)}
-                      onClick={() => seek(t.start_s)}
-                      className={`flex gap-2 text-sm rounded px-2 py-1 cursor-pointer ${
-                        t.speaker === "agent" ? "" : "flex-row-reverse text-right"
-                      } ${active ? "bg-indigo-900/50" : "hover:bg-slate-800/50"}`}>
-                      <span className="font-mono text-[11px] text-slate-500 shrink-0 pt-0.5">{fmtDur(t.start_s)}</span>
-                      <div className={`max-w-[78%] rounded-lg px-3 py-1.5 ${
-                        t.speaker === "agent" ? "bg-slate-800" : "bg-indigo-950"
-                      } ${isEv ? "ring-1 ring-amber-500/60" : ""}`}>
-                        <span className="block text-[10px] uppercase tracking-wide text-slate-500">{t.speaker}</span>
-                        {t.text}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          </div>
-
-          <div className="space-y-4">
-            <Panel title="Intent">
-              <p className="text-sm text-slate-200 mb-2">{a.intent}</p>
-              <Evidence ev={a.intent_evidence} onSeek={seek} />
-            </Panel>
-            <Panel title="Summary">
-              <p className="text-sm text-slate-200">{a.summary}</p>
-            </Panel>
-            <Panel title="Resolution">
-              <div className="mb-2"><ResBadge r={a.resolution} /></div>
-              <Evidence ev={a.resolution_evidence} onSeek={seek} />
-            </Panel>
-            <Panel title={`Attention score · ${a.needs_attention_score}`}>
-              <div className="space-y-1.5">
-                {(a.score_breakdown?.breakdown || []).map((b, i) => (
-                  <div key={i}>
-                    <div className="text-xs text-slate-300">{b.factor.replace(/_/g, " ")} <span className="text-slate-500">+{b.points}</span></div>
-                    {b.evidence?.quote && <Evidence ev={b.evidence} onSeek={seek} />}
-                    {b.evidence?.note && <div className="text-[11px] text-slate-500">{b.evidence.note}</div>}
-                  </div>
-                ))}
-                {!(a.score_breakdown?.breakdown || []).length && <p className="text-xs text-slate-500">No escalation signals — clean call.</p>}
-              </div>
-            </Panel>
-          </div>
+      {/* hero instrument: field + transport + energy, one shared time scale */}
+      <section className="mt-8 bg-paper-2 border border-hair px-6 pt-6 pb-5">
+        <ConversationField
+          duration={duration} agent={c.agent} customer={c.customer.name}
+          events={events} time={time} onSeek={seek}
+          hovered={hovered} onHover={setHovered}
+        />
+        <div className="mt-6 pt-5 border-t border-hair">
+          <Waveform
+            peaks={peaks} duration={duration} time={time} playing={playing}
+            onToggle={toggle} onSeek={seek}
+            marks={events.filter((e) => e.tone === "green" || e.tone === "red")}
+          />
         </div>
-      ) : (
-        <p className="text-slate-500">Analysis pending for this call. Transcript above.</p>
-      )}
+        {a?.mood_timeline?.length > 0 && (
+          <div className="mt-6 pt-5 border-t border-hair">
+            <EnergyGraph timeline={a.mood_timeline} shift={a.mood_shift}
+              duration={duration} time={time} onSeek={seek} />
+          </div>
+        )}
+      </section>
+
+      {/* transcript + intelligence */}
+      <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10">
+        <section>
+          <Label className="mb-5">Transcript</Label>
+          <Transcript turns={c.transcript} time={time} onSeek={seek}
+            evidence={evidence} agent={c.agent} customer={c.customer.name} />
+        </section>
+        <aside className="lg:border-l lg:border-hair lg:pl-8">
+          <Label className="mb-4">Intelligence</Label>
+          <div className="lg:sticky lg:top-20">
+            <IntelRail analysis={a} onSeek={seek} hovered={hovered} onHover={setHovered} />
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
 
-function Panel({ title, children }) {
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-lg p-3">
-      <h3 className="text-xs uppercase tracking-wide text-slate-500 mb-2">{title}</h3>
-      {children}
-    </div>
+/* ---- derive the conversation-field nodes from the analysis ---------------- */
+const EVENT_RANK = { green: 5, red: 5, amber: 4, cyan: 3, mood: 1 };
+
+function buildEvents(a) {
+  const out = [];
+  const push = (t, label, tone, extra = {}) => {
+    if (t == null) return;
+    out.push({ key: extra.key || `${label}-${Math.round(t)}`, t, label, tone, ...extra });
+  };
+  if (a.intent_evidence) push(a.intent_evidence.t_seconds, a.trending_issue_label || "Intent", "cyan");
+  (a.mood_timeline || []).forEach((m) =>
+    push(m.t_seconds, m.mood, "mood", { mood: m.mood, quote: m.quote })
   );
+  if (a.mood_shift)
+    push(a.mood_shift.t_seconds, `${a.mood_shift.from_mood} to ${a.mood_shift.to_mood}`, "amber",
+      { key: "shift" });
+  (a.score_breakdown?.breakdown || []).forEach((f) => {
+    if (f.evidence?.t_seconds != null)
+      push(f.evidence.t_seconds, factorLabel(f.factor), f.factor === "long_call" ? "amber" : "red",
+        { key: `f:${f.factor}` });
+  });
+  if (a.resolution_evidence) {
+    const res = RESOLUTION[a.resolution] || RESOLUTION.unclear;
+    push(a.resolution_evidence.t_seconds, res.label,
+      a.resolution === "resolved" ? "green" : a.resolution === "unresolved" ? "red" : "cyan",
+      { key: "outcome" });
+  }
+  // when two moments land on the same second, keep the higher-ranked one
+  const byT = new Map();
+  for (const e of out) {
+    const k = Math.round(e.t);
+    const cur = byT.get(k);
+    if (!cur || (EVENT_RANK[e.tone] || 0) > (EVENT_RANK[cur.tone] || 0)) byT.set(k, e);
+  }
+  return [...byT.values()].sort((x, y) => x.t - y.t);
+}
+
+function buildEvidenceMap(a) {
+  const m = new Map();
+  const add = (ev, hex, note) => {
+    if (ev?.turn_idx == null) return;
+    if (!m.has(ev.turn_idx)) m.set(ev.turn_idx, { hex, note });
+  };
+  add(a.intent_evidence, "#2C6F81", "intent");
+  add(a.resolution_evidence, a.resolution === "resolved" ? "#3D7A4E" : "#AC443B", "outcome");
+  (a.mood_timeline || []).forEach((x) => add(x, MOOD_INK[x.mood], `mood: ${x.mood}`));
+  (a.score_breakdown?.breakdown || []).forEach((f) =>
+    add(f.evidence, "#A96B12", factorLabel(f.factor))
+  );
+  return m;
 }
