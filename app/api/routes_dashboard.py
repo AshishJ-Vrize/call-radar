@@ -124,8 +124,8 @@ def agents(db: Session = Depends(get_session)) -> list[dict]:
         out.append({
             "agent": name,
             "calls": n,
-            "avg_handle_time_s": round(avg_dur) if avg_dur else None,
-            "avg_attention_score": round(avg_score, 1) if avg_score is not None else None,
+            "avg_handle_time_s": int(round(avg_dur)) if avg_dur else None,
+            "avg_attention_score": round(float(avg_score), 1) if avg_score is not None else None,
             "resolved_pct": round(100 * (resolved or 0) / analyzed) if analyzed else None,
         })
     return out

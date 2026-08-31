@@ -84,35 +84,34 @@ def _cap_words(s: str, n: int) -> str:
     return s if len(w) <= n else " ".join(w[:n]).rstrip(",.;:") + "…"
 
 
-_ISSUE_CANON = [
-    ("card", "replace"), ("card", "lost"), ("card", "stolen"),
+# Keyword -> canonical bucket. First matching rule wins; order matters.
+_ISSUE_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("checkbook", "check book", "cheque book", "checks"), "checkbook request"),
+    (("password", "log in", "login", "log-in", "reset my pass"), "password reset"),
+    (("branch", "hours", "location", "opening"), "branch hours / location"),
+    (("appointment", "schedule", "booking", "meet with"), "appointment booking"),
+    (("lost", "stolen", "replace", "replacement", "new card", "card not"), "lost / replacement card"),
+    (("transfer", "move money", "move funds"), "funds transfer"),
+    (("bill", "pay ", "payment", "utility", "gas bill", "electric"), "bill payment"),
+    (("balance", "how much", "available funds"), "balance enquiry"),
+    (("dispute", "fraud", "unauthori", "didn't make", "did not make"), "disputed transaction"),
+    (("address", "phone number", "contact detail", "update my"), "account detail update"),
+    (("statement",), "statement request"),
+    (("overdraft", "fee", "charge"), "fees & charges"),
+    (("loan", "mortgage", "credit line"), "lending enquiry"),
+    (("wire", "international"), "wire transfer"),
 ]
-_ISSUE_MAP = {
-    "lost card": "lost/replacement card", "lost credit card": "lost/replacement card",
-    "card replacement": "lost/replacement card", "replacement card": "lost/replacement card",
-    "lost card replacement": "lost/replacement card", "credit card replacement": "lost/replacement card",
-    "account balance": "balance enquiry", "balance enquiry": "balance enquiry",
-    "balance inquiry": "balance enquiry", "check balance": "balance enquiry",
-    "savings balance check": "balance enquiry", "account balance inquiry": "balance enquiry",
-    "funds transfer": "funds transfer", "money transfer": "funds transfer",
-    "transfer funds": "funds transfer", "account transfer": "funds transfer",
-    "password reset": "password reset", "reset password": "password reset",
-    "branch hours": "branch hours / location", "branch location": "branch hours / location",
-    "appointment scheduling": "appointment booking", "schedule appointment": "appointment booking",
-    "book appointment": "appointment booking", "appointment booking": "appointment booking",
-    "disputed transaction": "disputed transaction", "transaction dispute": "disputed transaction",
-    "fraud": "fraud / dispute", "fraudulent charge": "fraud / dispute",
-}
 
 
 def canon_issue(label: str) -> str:
-    s = (label or "other").strip().lower()
-    if s in _ISSUE_MAP:
-        return _ISSUE_MAP[s]
-    for a, b in _ISSUE_CANON:
-        if a in s and b in s:
-            return "lost/replacement card"
-    return s[:80]
+    s = (label or "").lower()
+    # strip any leaked evidence / parenthetical the model appended
+    s = s.split("(")[0].split(":")[0].strip()
+    for keys, bucket in _ISSUE_RULES:
+        if any(k in s for k in keys):
+            return bucket
+    words = s.split()
+    return (" ".join(words[:4]) or "other")[:60]
 
 
 NEGATIVE_END_MOODS = {"frustrated": 10, "angry": 20, "anxious": 6}

@@ -7,7 +7,8 @@ export default function Agents() {
   const [sort, setSort] = useState("calls");
   useEffect(() => { api.agents().then(setRows); }, []);
 
-  const sorted = [...rows].sort((a, b) => (b[sort] ?? -1) - (a[sort] ?? -1));
+  const num = (v) => (v == null ? -1 : parseFloat(v));
+  const sorted = [...rows].sort((a, b) => num(b[sort]) - num(a[sort]));
   const cols = [
     ["agent", "Agent"], ["calls", "Calls"], ["avg_handle_time_s", "Avg handle time"],
     ["resolved_pct", "Resolved %"], ["avg_attention_score", "Avg attention"],
